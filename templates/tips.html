@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Personalized Health Tips</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='tips.css') }}">
+</head>
+<body>
+
+  <div class="form-box">
+    <form method="post" enctype="multipart/form-data">
+      <label class="form-label"><b>Upload Your Health Report (PDF):</b></label><br>
+      <input type="file" name="pdf" accept=".pdf" required class="file-input"><br><br>
+      <button type="submit" class="btn-submit">Analyze Report</button>
+    </form>
+  </div>
+
+  {% if data %}
+    <h1 class="title">Your Health Analysis</h1>
+
+    <!-- Heart -->
+    <div class="risk-card {% if data.heart.risk %}risk-red{% else %}risk-green{% endif %}">
+      <h2>Heart Health: {% if data.heart.risk %}High Risk{% else %}Safe{% endif %}</h2>
+    </div>
+    {% if data.heart.risk %}
+    <div class="tips-section fade-in">
+      <h3>Diet Tips</h3>
+      <ul>
+        {% for tip in data.heart.tips.diet %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+      <h3>Exercise Tips</h3>
+      <ul>
+        {% for tip in data.heart.tips.exercise %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Diabetes -->
+    <div class="risk-card {% if data.diabetes.risk %}risk-red{% else %}risk-green{% endif %}">
+      <h2>Diabetes: {% if data.diabetes.risk %}High Risk{% else %}Safe{% endif %}</h2>
+    </div>
+    {% if data.diabetes.risk %}
+    <div class="tips-section fade-in">
+      <h3>Diet Tips</h3>
+      <ul>
+        {% for tip in data.diabetes.tips.diet %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+      <h3>Exercise Tips</h3>
+      <ul>
+        {% for tip in data.diabetes.tips.exercise %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Body Fat -->
+    <div class="risk-card {% if data.bodyfat.risk %}risk-red{% else %}risk-green{% endif %}">
+      <h2>Body Fat: 
+        {% if data.bodyfat.risk %}High ({{ data.bodyfat.percent }}%) 
+        {% else %}Normal ({{ data.bodyfat.percent }}%) {% endif %}
+      </h2>
+    </div>
+    {% if data.bodyfat.risk %}
+    <div class="tips-section fade-in">
+      <h3>Diet Tips</h3>
+      <ul>
+        {% for tip in data.bodyfat.tips.diet %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+      <h3>Exercise Tips</h3>
+      <ul>
+        {% for tip in data.bodyfat.tips.exercise %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if data.bodyfat.chart %}
+    <div class="chart-container fade-in">
+      <img src="data:image/png;base64,{{ data.bodyfat.chart }}" alt="Body Fat Chart">
+    </div>
+    {% endif %}
+  {% endif %}
+
+</body>
+</html>

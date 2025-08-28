@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Health Chatbot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h2>💬 Health Assistant</h2>
+    </div>
+
+    <div id="chat-box" class="chat-box">
+      <!-- Chat messages will appear here -->
+    </div>
+
+    <form id="chat-form" class="chat-form">
+      <input type="text" id="user-input" placeholder="Type your message..." required>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <script>
+    $(function(){
+      $("#chat-form").on("submit", function(e){
+        e.preventDefault();
+        const msg = $("#user-input").val();
+        if (!msg.trim()) return;
+
+        // Append user message
+        $("#chat-box").append(`<div class="msg user"><span>${msg}</span></div>`);
+        $("#user-input").val("");
+        $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
+
+        // Send to backend
+        $.post("/get", { msg: msg }, function(data){
+          $("#chat-box").append(`<div class="msg bot"><span>${data.reply}</span></div>`);
+          $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

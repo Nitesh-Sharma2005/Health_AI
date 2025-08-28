@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diabetes Prediction</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='Diabetes.css') }}" />
+</head>
+<body>
+
+  <!-- Floating background icons -->
+  <div class="floating-icon icon1"></div>
+  <div class="floating-icon icon2"></div>
+  <div class="floating-icon icon3"></div>
+  <div class="floating-icon icon4"></div>
+
+  <main class="center-wrapper">
+    <h1 class="fancy-title">
+      <span class="icon">🩺</span>
+      Diabetes Prediction
+     
+    </h1>
+
+    <div class="container">
+      <form action="/diabetes" method="POST">
+        {% for field, label, desc in [
+          ('age', 'Age', 'Enter your age in years.'),
+          ('gender', 'Gender', 'Select your gender.'),
+          ('polyuria', 'Polyuria', 'Frequent or excessive urination?'),
+          ('polydipsia', 'Polydipsia', 'Extreme thirst most of the time?'),
+          ('sudden_weight_loss', 'Sudden Weight Loss', 'Unintentional rapid weight loss?'),
+          ('weakness', 'Weakness', 'Feeling tired or low on energy?'),
+          ('polyphagia', 'Polyphagia', 'Excessive or extreme hunger?'),
+          ('genital_thrush', 'Genital Thrush', 'Yeast infection near private area?'),
+          ('visual_blurring', 'Visual Blurring', 'Blurred or foggy vision?'),
+          ('itching', 'Itching', 'Unusual skin itching?'),
+          ('irritability', 'Irritability', 'Feeling annoyed or restless?'),
+          ('delayed_healing', 'Delayed Healing', 'Slow healing of cuts/injuries?'),
+          ('partial_paresis', 'Partial Paresis', 'Muscle weakness or reduced movement?'),
+          ('muscle_stiffness', 'Muscle Stiffness', 'Difficulty moving muscles?'),
+          ('alopecia', 'Alopecia', 'Unusual or patchy hair loss?'),
+          ('obesity', 'Obesity', 'Do you consider yourself overweight?')
+        ] %}
+          <label for="{{ field }}">{{ label }}:
+            {% if field == "age" %}
+              <input type="number" name="{{ field }}" required />
+            {% elif field == "gender" %}
+              <select name="{{ field }}" required>
+                <option value="0">Female</option>
+                <option value="1">Male</option>
+              </select>
+            {% else %}
+              <select name="{{ field }}" required>
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+              </select>
+            {% endif %}
+            <small>{{ desc }}</small>
+          </label>
+        {% endfor %}
+
+        <button type="submit">Predict</button>
+
+        {% if prediction is not none %}
+          <div class="result show">
+            {% if prediction == 1 %}
+              ⚠️ <strong>Diabetes Detected</strong><br>
+            {% else %}
+              ✅ <strong>No Diabetes Detected</strong><br>
+            {% endif %}
+            <p>Prediction Confidence: <strong>{{ '%.2f'|format(probability) }}%</strong></p>
+          </div>
+        {% endif %}
+      </form>
+    </div>
+  </main>
+</body>
+</html>

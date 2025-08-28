@@ -1,0 +1,145 @@
+/* Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f9f9f9;
+    color: #333;
+    padding: 20px;
+    line-height: 1.6;
+    animation: fadeInBody 1s ease-in;
+}
+
+/* Container Layout */
+.container {
+    max-width: 900px;
+    margin: auto;
+    background: #fff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    animation: slideInContainer 1s ease-out forwards;
+}
+
+/* Headings */
+h1, h2 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+
+/* Email Section */
+.email {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0 40px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #f1f1f1;
+    font-weight: bold;
+}
+
+/* Section Spacing */
+section {
+    margin-top: 40px;
+    opacity: 0;
+    animation: fadeInSection 1s ease-in forwards;
+    animation-delay: 0.3s;
+}
+
+/* Buttons */
+button, .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    background-color: #3498db;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+button:hover, .btn:hover {
+    transform: scale(1.05);
+    background-color: #2980b9;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+/* Link Hover Effects */
+a {
+    color: #3498db;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    color: #1abc9c;
+    text-shadow: 0 0 5px rgba(26, 188, 156, 0.5);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+
+    table, th, td {
+        font-size: 14px;
+    }
+
+    h1, h2 {
+        font-size: 22px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: none;
+        color: #000;
+    }
+
+    .container {
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    button, .btn, a {
+        display: none !important;
+    }
+}
+
+/* Animations */
+@keyframes fadeInBody {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInContainer {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeInSection {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

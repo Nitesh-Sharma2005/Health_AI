@@ -1,0 +1,95 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f8f9fa;
+  padding: 20px;
+}
+
+.title {
+  text-align: center;
+  color: #333;
+  margin-top: 20px;
+}
+
+.form-box {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 500px;
+  margin: auto;
+  box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+}
+
+.form-label {
+  font-size: 1rem;
+  color: #444;
+}
+
+.file-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.btn-submit {
+  background: linear-gradient(45deg, #4CAF50, #2ecc71);
+  border: none;
+  padding: 10px 20px;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-submit:hover {
+  background: linear-gradient(45deg, #43a047, #27ae60);
+  transform: scale(1.05);
+}
+
+.risk-card {
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.risk-red {
+  background: #e74c3c;
+}
+
+.risk-green {
+  background: #2ecc71;
+}
+
+.tips-section {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+  box-shadow: 0px 0px 5px rgba(0,0,0,0.1);
+}
+
+.tips-section h3 {
+  margin-top: 0;
+}
+
+ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.chart-container {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

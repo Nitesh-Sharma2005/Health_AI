@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3D Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/signin.css" />
+</head>
+<body>
+  <div class="login-container">
+    <h1 class="form-title">Welcome Back</h1>
+    <form method="POST" action="/">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+      <div class="input-group">
+        <input type="email" id="email" name="email" required placeholder=" " />
+        <label for="email">Email</label>
+      </div>
+      <div class="input-group">
+        <input type="password" id="password" name="password" required placeholder=" " />
+        <label for="password">Password</label>
+      </div>
+      <button type="submit" class="btn">Login</button>
+    </form>
+
+    <!-- ✅ Forgot Password Button -->
+    <div class="forgot-password">
+      <a href="/forgot">Forgot your password?</a>
+    </div>
+
+    <div class="signup">
+      <p>New here?</p>
+      <a href="/signup">Create an account</a>
+    </div>
+  </div>
+</body>
+</html>

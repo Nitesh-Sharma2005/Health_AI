@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HealthAI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
+  <link rel="stylesheet" href="static/main.css" />
+  <link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+</head>
+<body>
+<body>
+
+  <!-- Flash Message Popup -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div id="flash-popup" class="flash-popup alert-{{ messages[0][0] }}">
+        {{ messages[0][1] }}
+      </div>
+      <script>
+        setTimeout(() => {
+          const popup = document.getElementById("flash-popup");
+          if (popup) popup.style.display = "none";
+        }, 3000);  // hide after 3 seconds
+      </script>
+    {% endif %}
+  {% endwith %}
+
+  <header class="navbar">
+    <div class="logo">HealthAI</div>
+    <nav>
+      <a href="#home">Home</a>
+      <a href="#predict">Predict</a>
+      <a href="/report">Report</a>
+      <a href="/tips">Tips</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+      <a href="/chatbot">Chatbot</a>
+      <a href="/">Sign Out</a>
+    </nav>
+  </header>
+
+  <!-- 🔥 Hero Section -->
+  <section class="hero" id="home" data-aos="fade-up">
+    <div class="hero-image-overlay">
+      
+    </div>
+    <div class="hero-content">
+      <h1 class="glow-text">Your Smart Health Companion</h1>
+      <p>AI-Powered Predictions for a Better Tomorrow</p>
+      <div class="hero-buttons">
+        <a href="#predict" class="btn glow-btn">Start Prediction</a>
+        <a href="/tips" class="btn outline glow-btn">Explore Tips</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 🌟 Features -->
+  <section class="features" id="features" data-aos="fade-up">
+    <h2>Our Features</h2>
+    <div class="feature-list">
+      <div class="feature-item" data-aos="fade-up" data-aos-delay="100">
+        <i class="fas fa-heartbeat fa-3x"></i>
+        <h3>Heart Risk</h3>
+        <p>AI-backed cardiovascular insights.</p>
+      </div>
+      <div class="feature-item" data-aos="fade-up" data-aos-delay="200">
+        <i class="fas fa-prescription-bottle fa-3x"></i>
+        <h3>Diabetes Check</h3>
+        <p>Simple and fast glucose analysis.</p>
+      </div>
+      <div class="feature-item" data-aos="fade-up" data-aos-delay="300">
+        <i class="fas fa-weight fa-3x"></i>
+        <h3>Body Fat</h3>
+        <p>Estimate body fat from your data.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 🔮 Predict Section -->
+  <section class="predict-section" id="predict" data-aos="fade-up">
+    <h2>Try Our Prediction Models</h2>
+    <p>Choose a model below to get started with an instant health assessment:</p>
+    <div class="predict-cards">
+      <div class="predict-card" data-aos="zoom-in" data-aos-delay="100">
+        <h3>Diabetes Prediction</h3>
+        <p>Enter your health data to test your risk of diabetes.</p>
+          <a href="/diabetes" class="btn">Try Diabetes Test</a>
+      </div>
+      <div class="predict-card" data-aos="zoom-in" data-aos-delay="200">
+        <h3>Heart Disease Prediction</h3>
+        <p>Check your heart health risk with our specialized model.</p>
+        <a href="/heart" class="btn">Try Heart</a>
+      </div>
+      <div class="predict-card" data-aos="zoom-in" data-aos-delay="300">
+        <h3>Body Fat Prediction</h3>
+        <p>Assess your body fat percentage based on key metrics.</p>
+        <a href="/bodyfat"  class="btn">Try Body Fat</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 📖 About -->
+  <section class="about-section" id="about" data-aos="fade-up">
+    <div class="about-glass">
+      <h2>About HealthAI</h2>
+      <p><strong>HealthAI</strong> is a powerful, AI-powered web app built using three machine learning models that helps users assess their health instantly.</p>
+      <p>This platform bridges technology and wellness, ensuring that everyone has access to intelligent, accessible health support — no hospital lines, no waiting.</p>
+      <p class="note">⚠️ Disclaimer: This tool is for educational and informational purposes only. It is not a replacement for professional medical diagnosis.</p>
+    </div>
+  </section>
+
+  <!-- ✉️ Contact -->
+  <section class="contact" id="contact" data-aos="fade-up">
+    <h2>Contact Us</h2>
+    <div class="contact-grid">
+      <form action="/contact" method="POST">
+  <input type="text" name="name" placeholder="Your Name" required />
+  <input type="email" name="email" placeholder="Your Email" required />
+  <textarea name="message" rows="5" placeholder="Your Message..." required></textarea>
+  
+  <!-- Location fields -->
+  <input type="hidden" name="latitude" id="latitude" />
+  <input type="hidden" name="longitude" id="longitude" />
+<input type="text" id="address-display" name="address" placeholder="Your Full Address" required />
+
+
+
+  <button type="submit" class="btn">Send</button>
+</form>
+
+      <div class="map-placeholder">
+  <h3>Your Location (Optional)</h3>
+  <div id="map" style="height: 300px; border-radius: 10px; margin-bottom: 1rem;"></div>
+  <input type="hidden" name="latitude" id="latitude" />
+  <input type="hidden" name="longitude" id="longitude" />
+</div>
+    </div>
+  </section>
+
+  <!-- ⚙️ Footer -->
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+      <a href="#report">Report</a>
+      <a href="#">Terms</a>
+    </div>
+    <div class="socials">
+      <a href="#"><i class="fab fa-facebook-f"></i></a>
+      <a href="#"><i class="fab fa-twitter"></i></a>
+      <a href="#"><i class="fab fa-linkedin-in"></i></a>
+    </div>
+    <p>&copy; 2025 HealthAI. All rights reserved.</p>
+  </footer>
+
+  <!-- AOS Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script src="static/main.js"></script>
+
+  
+
+</body>
+</html>

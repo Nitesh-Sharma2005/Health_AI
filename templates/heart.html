@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Heart Disease Prediction</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='heart.css') }}" />
+</head>
+<body>
+
+  <!-- Floating background icons -->
+  <div class="floating-icon icon1"></div>
+  <div class="floating-icon icon2"></div>
+  <div class="floating-icon icon3"></div>
+  <div class="floating-icon icon4"></div>
+
+  <main class="center-wrapper">
+    <h1 class="fancy-title">
+      <span class="icon">❤️</span>
+      Heart Disease Prediction
+    </h1>
+
+    <div class="container">
+      <form action="/heart" method="POST">
+        {% for field, label, desc in [
+          ('Chest_Pain', 'Chest Pain', 'Discomfort or tightness in the chest?'),
+          ('Shortness_of_Breath', 'Shortness of Breath', 'Breathing difficulty with mild activity?'),
+          ('Fatigue', 'Fatigue', 'Feeling tired or exhausted?'),
+          ('Palpitations', 'Palpitations', 'Unusual heartbeats or fluttering?'),
+          ('Dizziness', 'Dizziness', 'Feeling lightheaded or faint?'),
+          ('Swelling', 'Swelling', 'Swelling in legs, ankles, or feet?'),
+          ('Pain_Arms_Jaw_Back', 'Pain in Arms/Jaw/Back', 'Radiating pain to arms or back?'),
+          ('Cold_Sweats_Nausea', 'Cold Sweats or Nausea', 'Sudden sweating or nausea?'),
+          ('High_BP', 'High Blood Pressure', 'Diagnosed with high BP?'),
+          ('High_Cholesterol', 'High Cholesterol', 'Diagnosed with high cholesterol?'),
+          ('Diabetes', 'Diabetes', 'Do you have diabetes?'),
+          ('Smoking', 'Smoking', 'Do you currently smoke?'),
+          ('Obesity', 'Obesity', 'Do you consider yourself overweight?'),
+          ('Sedentary_Lifestyle', 'Sedentary Lifestyle', 'Minimal physical activity daily?'),
+          ('Family_History', 'Family History', 'Family history of heart disease?'),
+          ('Chronic_Stress', 'Chronic Stress', 'Persistent emotional or mental stress?'),
+          ('Gender', 'Gender', 'Select your gender.'),
+          ('Age', 'Age', 'Enter your age in years.')
+        ] %}
+          <label for="{{ field }}">{{ label }}:
+            {% if field == "Age" %}
+              <input type="number" name="{{ field }}" id="{{ field }}" required />
+            {% elif field == "Gender" %}
+              <select name="{{ field }}" id="{{ field }}" required>
+                <option value="0">Female</option>
+                <option value="1">Male</option>
+              </select>
+            {% else %}
+              <select name="{{ field }}" id="{{ field }}" required>
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+              </select>
+            {% endif %}
+            <small>{{ desc }}</small>
+          </label>
+        {% endfor %}
+
+        <button type="submit">Predict</button>
+
+        {% if prediction is not none %}
+          <div class="result show">
+            {% if prediction == 1 %}
+              ⚠️ <strong>High Risk of Heart Disease</strong><br>
+            {% else %}
+              ✅ <strong>Low Risk of Heart Disease</strong><br>
+            {% endif %}
+            <p>Prediction Confidence: <strong>{{ '%.2f'|format(probability) }}%</strong></p>
+          </div>
+        {% endif %}
+      </form>
+    </div>
+  </main>
+</body>
+</html>

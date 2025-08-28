@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forgot Password</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='forgot.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1 class="form-title">Reset Your Password</h1>
+    <form method="POST" action="/forgot">
+      <div class="input-group">
+        <i class="fas fa-envelope"></i>
+        <input type="email" id="email" name="email" placeholder=" " required />
+        <label for="email">Registered Email</label>
+      </div>
+      <div class="input-group">
+        <i class="fas fa-calendar-alt"></i>
+        <input type="date" id="dob" name="dob" required />
+        <label for="dob" style="top: -10px; left: 35px; font-size: 0.75rem;">Date of Birth</label>
+      </div>
+      <div class="input-group">
+        <i class="fas fa-key"></i>
+        <input type="password" id="recovery_password" name="recovery_password" placeholder=" " required />
+        <label for="recovery_password">Current Email Password</label>
+      </div>
+      <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="new_password" name="new_password" placeholder=" " required />
+        <label for="new_password">New Password</label>
+      </div>
+      <button class="btn" type="submit">Reset Password</button>
+    </form>
+
+    <div class="links">
+      <p>Back to login?</p>
+      <a href="/"><button type="button">Login</button></a>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <script>
+        alert("{{ messages[0][1] }}");
+      </script>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>

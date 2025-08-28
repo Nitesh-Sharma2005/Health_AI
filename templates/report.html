@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Health Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>User Health Report</h1>
+
+        {% if not pdf_export %}
+        <form method="POST" action="{{ url_for('report') }}" class="email-form">
+            <label for="email">Enter Your Email to Fetch Report:</label><br>
+            <input type="email" name="email" required value="{{ user_email if user_email else '' }}" />
+            <button type="submit" class="btn">Fetch Report</button>
+        </form>
+        {% endif %}
+
+        {% if heart or diabetes or bodyfat %}
+            <p class="email"><strong>Email:</strong> {{ user_email }}</p>
+
+            {% if heart %}
+            <section>
+                <h2>Heart Prediction</h2>
+                <p>prediction {{ heart.prediction }}</p>
+                <p>probability {{ heart.probability }}</p>
+                <table>
+                    {% for key, value in heart.items() %}
+                    <tr><th>{{ key.replace("_", " ") }}</th><td>{{ value }}</td></tr>
+                    {% endfor %}
+                </table>
+            </section>
+            {% endif %}
+
+            {% if diabetes %}
+            <section>
+                <h2>Diabetes Prediction</h2>
+                <p>prediction {{ diabetes.prediction }}</p>
+                <p>probability {{ diabetes.probability }}</p>
+                <table>
+                    {% for key, value in diabetes.items() %}
+                    <tr><th>{{ key.replace("_", " ") }}</th><td>{{ value }}</td></tr>
+                    {% endfor %}
+                </table>
+            </section>
+            {% endif %}
+
+            {% if bodyfat %}
+            <section>
+                <h2>Body Fat Prediction</h2>
+                <p>prediction {{ bodyfat.prediction }}</p>
+                <table>
+                    {% for key, value in bodyfat.items() %}
+                    <tr><th>{{ key.replace("_", " ") }}</th><td>{{ value }}</td></tr>
+                    {% endfor %}
+                </table>
+            </section>
+            {% endif %}
+
+            {% if not pdf_export %}
+            <div style="text-align:center; margin-top: 30px;">
+                <form method="POST" action="{{ url_for('download_report') }}">
+                    <input type="hidden" name="email" value="{{ user_email }}" />
+                    <button type="submit" class="btn glow-btn">📥 Download PDF Report</button>
+                </form>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>

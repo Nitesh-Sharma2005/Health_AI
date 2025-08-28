@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Health Report Tips</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        h2, h3 {
+            color: #2c3e50;
+            border-left: 6px solid #3498db;
+            padding-left: 10px;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            background: #ecf0f1;
+            margin-bottom: 8px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        img {
+            max-width: 250px;
+            margin: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .charts {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .chart-block {
+            text-align: center;
+            margin: 10px;
+        }
+
+        .tip-header {
+            margin-top: 30px;
+            font-size: 1.3rem;
+            color: #27ae60;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        @media (max-width: 600px) {
+            .charts {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            img {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🩺 Extracted Health Prediction</h2>
+
+        {% if extracted.heart is defined %}
+            <h3>❤️ Heart Prediction</h3>
+            <p><strong>Prediction:</strong> {{ extracted.heart }}</p>
+            <p><strong>Probability:</strong> {{ extracted.heart_prob }}%</p>
+        {% endif %}
+
+        {% if extracted.diabetes is defined %}
+            <h3>🩸 Diabetes Prediction</h3>
+            <p><strong>Prediction:</strong> {{ extracted.diabetes }}</p>
+            <p><strong>Probability:</strong> {{ extracted.diabetes_prob }}%</p>
+        {% endif %}
+
+        {% if extracted.bodyfat is defined %}
+            <h3>🧮 Body Fat</h3>
+            <p><strong>Estimated:</strong> {{ extracted.bodyfat }}%</p>
+        {% endif %}
+
+        <h3 class="tip-header">🧠 Personalized Health Tips</h3>
+        <ul>
+            {% for tip in tips %}
+                <li>{{ tip }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3 class="tip-header">📊 Visual Charts</h3>
+        <div class="charts">
+            {% if heart_chart %}
+                <div class="chart-block">
+                    <img src="data:image/png;base64,{{ heart_chart }}" alt="Heart Chart">
+                    <p>Heart Risk %</p>
+                </div>
+            {% endif %}
+
+            {% if diabetes_chart %}
+                <div class="chart-block">
+                    <img src="data:image/png;base64,{{ diabetes_chart }}" alt="Diabetes Chart">
+                    <p>Diabetes Risk %</p>
+                </div>
+            {% endif %}
+
+            {% if bodyfat_chart %}
+                <div class="chart-block">
+                    <img src="data:image/png;base64,{{ bodyfat_chart }}" alt="Body Fat Chart">
+                    <p>Body Fat %</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            Health Prediction Report by Flask App &copy; {{ now().year }}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,177 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  background: #0d0d0d;
+  color: #e0e0e0;
+  background-image: radial-gradient(circle at top left, #1a1a2e, transparent),
+                    radial-gradient(circle at bottom right, #16213e, transparent);
+  background-attachment: fixed;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.center-wrapper {
+  max-width: 700px;
+  margin: auto;
+  padding: 40px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.fancy-title {
+  text-align: center;
+  font-size: 30px;
+  margin-bottom: 25px;
+  color: #f9f9f9;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+}
+
+.icon {
+  font-size: 34px;
+  margin-right: 10px;
+  color: #ff4757;
+  animation: pulse-icon 1.5s infinite;
+}
+
+@keyframes pulse-icon {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+
+input, select {
+  padding: 10px 12px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #fff;
+  outline: none;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus, select:focus {
+  border-color: #00a8ff;
+  box-shadow: 0 0 6px #00a8ff;
+}
+
+input:invalid:focus, select:invalid:focus {
+  animation: shake 0.3s;
+  border-color: #e74c3c;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+
+button {
+  padding: 14px;
+  background-color: #ff0033;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 25px;
+  font-size: 16px;
+  box-shadow: 0 0 10px #ff0033, 0 0 20px #ff0033;
+  transition: all 0.3s ease;
+  animation: heartbeatGlow 2s infinite;
+}
+
+button:hover {
+  background-color: #ff1a40;
+  box-shadow: 0 0 15px #ff1a40, 0 0 30px #ff1a40;
+}
+
+@keyframes heartbeatGlow {
+  0%, 100% { box-shadow: 0 0 8px #ff0033; }
+  50% { box-shadow: 0 0 20px #ff0033; }
+}
+
+.result {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 5px solid #f39c12;
+  font-size: 17px;
+  color: #f1f1f1;
+  animation: fadeInScale 0.5s ease forwards;
+  transform: scale(0.95);
+  opacity: 0;
+}
+
+.result.show {
+  transform: scale(1);
+  opacity: 1;
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.result strong {
+  font-size: 20px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.floating-icon {
+  position: absolute;
+  width: 45px;
+  height: 45px;
+  background: radial-gradient(circle, rgba(255, 0, 0, 0.3), transparent);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.5);
+  z-index: 1;
+}
+
+.icon1 { top: 20px; left: 30px; animation-delay: 0s; }
+.icon2 { top: 100px; right: 40px; animation-delay: 2s; background: radial-gradient(circle, rgba(0, 128, 255, 0.3), transparent); }
+.icon3 { bottom: 50px; left: 60px; animation-delay: 4s; }
+.icon4 { bottom: 20px; right: 50px; animation-delay: 6s; background: radial-gradient(circle, rgba(0, 128, 255, 0.3), transparent); }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@media (max-width: 600px) {
+  .center-wrapper {
+    padding: 25px 15px;
+  }
+
+  .fancy-title {
+    font-size: 24px;
+  }
+
+  button {
+    font-size: 14px;
+  }
+}

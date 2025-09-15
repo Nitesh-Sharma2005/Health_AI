@@ -409,181 +409,202 @@ def download_report():
 
 
 #--------------------Tips Section -----------------------------------
-from flask import Flask, render_template, request
+# --------------------Tips Section -----------------------------------
+# Final, complete version with all six personalized graphs
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from io import BytesIO
+import base64
+import pandas as pd
+import os
+import fitz
+import re
 from docx import Document
 import random
-import base64
-import matplotlib.pyplot as plt
-from io import BytesIO
 
+# ------------------ Load and Standardize Datasets ------------------
+def load_and_standardize_data(filepath, target_col, age_col='age'):
+    try:
+        df = pd.read_csv(filepath); print(f"✅ Successfully loaded '{filepath}'.")
+        df.columns = [c.lower() for c in df.columns]
+        if age_col in df.columns: df.rename(columns={age_col: 'Age'}, inplace=True)
+        if target_col in df.columns: df.rename(columns={target_col: 'Risk'}, inplace=True)
+        else: return pd.DataFrame()
+        return df
+    except FileNotFoundError: print(f"❌ FILE NOT FOUND: '{filepath}'."); return pd.DataFrame()
+    except Exception as e: print(f"An error occurred: {e}"); return pd.DataFrame()
 
+heart_data = load_and_standardize_data("heart_disease_risk_dataset_earlymed.csv", target_col='heart_risk', age_col='age')
+diabetes_data = load_and_standardize_data("diabetes_data_cleaned.csv", target_col='class', age_col='age')
+try:
+    bodyfat_data = pd.read_csv("bodyfat_modifed.csv")
+except FileNotFoundError:
+    bodyfat_data = pd.DataFrame()
 
-DOCX_PATH = "health_tips_full.docx"  # file ka path
-
-# -------- Helper: Age group from age --------
+# -------- Helper Functions (Unchanged) --------
 def get_age_group(age):
-    if age < 40:
-        return "Young (<40)"
-    elif age < 60:
-        return "Middle (40–59)"
-    else:
-        return "Senior (60+)"
-
-# -------- Helper: Bodyfat category --------
-def get_bodyfat_category(percent, risk):
-    if risk == 0:
-        return "Safe"
-    if percent is None:
-        return "High Body Fat"  # default if risky but % missing
-    return "High Body Fat" if percent > 25 else "Low Body Fat"
-
-# -------- Parse docx into structured dict --------
+    if age < 40: return "Young (<40)"
+    elif age < 60: return "Middle (40–59)"
+    else: return "Senior (60+)"
 def parse_docx(path):
-    doc = Document(path)
-    tips_data = {}
-    current_section = None
-    current_age_group = None
-    current_risk_type = None
-    current_tip_type = None
-
-    for para in doc.paragraphs:
-        text = para.text.strip()
-        if not text:
-            continue
-
-        # Detect section
-        if text.startswith("🫀 SECTION 1: HEART HEALTH"):
-            current_section = "heart"
-            tips_data[current_section] = {}
-            continue
-        elif text.startswith("🩸 SECTION 2: DIABETES MANAGEMENT"):
-            current_section = "diabetes"
-            tips_data[current_section] = {}
-            continue
-        elif text.startswith("⚖️ SECTION 3: BODY FAT CONTROL"):
-            current_section = "bodyfat"
-            tips_data[current_section] = {}
-            continue
-
-        # Detect age group
-        if any(k in text for k in ["Young", "Middle", "Senior"]):
-            current_age_group = text
-            tips_data[current_section].setdefault(current_age_group, {})
-            continue
-
-        # Detect risk type
-        if text in ["Risky", "Safe", "High Body Fat", "Low Body Fat"]:
-            current_risk_type = text
-            tips_data[current_section][current_age_group].setdefault(current_risk_type, {})
-            continue
-
-        # Detect tip type
-        if text in ["Diet", "Exercise"]:
-            current_tip_type = text.lower()
-            tips_data[current_section][current_age_group][current_risk_type].setdefault(current_tip_type, [])
-            continue
-
-        # Otherwise: it's a tip line
-        if current_tip_type:
-            tips_data[current_section][current_age_group][current_risk_type][current_tip_type].append(text.lstrip("- "))
-
-    return tips_data
-
-# Load tips at startup
-TIPS = parse_docx(DOCX_PATH)
-
-# -------- Chart function --------
-def create_chart(percent):
-    fig, ax = plt.subplots(figsize=(3, 3))
-    ax.pie([percent, 100 - percent], labels=[f"{percent}%", ""], startangle=90, wedgeprops={'width':0.4})
-    buf = BytesIO()
-    plt.savefig(buf, format="png")
-    plt.close(fig)
-    return base64.b64encode(buf.getvalue()).decode()
-
-# -------- Pick tips --------
+    try:
+        if not os.path.exists(path): return {}
+        doc = Document(path); tips_data = {}; current_section=current_age_group=current_risk_type=current_tip_type = None
+        for para in doc.paragraphs:
+            text = para.text.strip();
+            if not text: continue
+            if "HEART HEALTH" in text: current_section = "heart"; tips_data[current_section] = {}
+            elif "DIABETES MANAGEMENT" in text: current_section = "diabetes"; tips_data[current_section] = {}
+            elif "BODY FAT CONTROL" in text: current_section = "bodyfat"; tips_data[current_section] = {}
+            elif any(k in text for k in ["Young", "Middle", "Senior"]): current_age_group = text; tips_data[current_section].setdefault(current_age_group, {})
+            elif text in ["Risky", "Safe", "High Body Fat", "Low Body Fat"]: current_risk_type = text; tips_data[current_section][current_age_group].setdefault(current_risk_type, {})
+            elif text in ["Diet", "Exercise"]: current_tip_type = text.lower(); tips_data[current_section][current_age_group][current_risk_type].setdefault(current_tip_type, [])
+            elif current_tip_type: tips_data[current_section][current_age_group][current_risk_type][current_tip_type].append(text.lstrip("- "))
+        return tips_data
+    except Exception: return {}
+TIPS = parse_docx("health_tips_full.docx")
 def get_tips(section, age_group, risk_type, n=2):
-    pool = TIPS.get(section, {}).get(age_group, {}).get(risk_type, {})
-    diet_list = pool.get("diet", [])
-    exercise_list = pool.get("exercise", [])
-    return {
-        "diet": random.sample(diet_list, min(n, len(diet_list))),
-        "exercise": random.sample(exercise_list, min(n, len(exercise_list)))
-    }
+    pool = TIPS.get(section, {}).get(age_group, {}).get(risk_type, {}); diet_list, exercise_list = pool.get("diet", []), pool.get("exercise", [])
+    num_tips = n if risk_type in ["Risky", "High Body Fat"] else 1
+    return {"diet": random.sample(diet_list, min(num_tips, len(diet_list))) if diet_list else [], "exercise": random.sample(exercise_list, min(num_tips, len(exercise_list))) if exercise_list else []}
 
-# -------- /tips route --------
-import fitz  # pip install pymupdf
-import re
-import os
+# -------- ALL SIX PERSONALIZED CHARTING FUNCTIONS --------
 
+# Chart 1: Heart Risk by Age Distribution (The one you requested)
+def create_heart_age_distribution_chart(dataset, user_age):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if not dataset.empty and 'Age' in dataset.columns:
+        sns.histplot(data=dataset[dataset['Risk'] == 0], x='Age', ax=ax, color='lightgreen', label='Safe', kde=True)
+        sns.histplot(data=dataset[dataset['Risk'] == 1], x='Age', ax=ax, color='salmon', label='At Risk', kde=True)
+        ax.axvline(user_age, color='black', linestyle='--', linewidth=2.5, label=f'Your Age: {user_age}')
+    else: ax.text(0.5, 0.5, 'Heart Age data not found', ha='center')
+    ax.set_title('Age Distribution by Heart Risk', fontweight='bold'); ax.set_xlabel('Age'); ax.set_ylabel('Number of Cases'); ax.legend()
+    plt.tight_layout(); buf = BytesIO(); plt.savefig(buf, format='png'); plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+# Chart 2: Personalized Chest Pain Chart
+def create_chest_pain_chart(dataset, user_chest_pain_type):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if not dataset.empty and 'chest_pain' in dataset.columns:
+        counts = dataset.groupby(['chest_pain', 'Risk']).size().unstack(fill_value=0)
+        safe_bars = ax.bar(counts.index, counts[0], label='Safe', color='#2ecc71', edgecolor='black')
+        risk_bars = ax.bar(counts.index, counts[1], bottom=counts[0], label='At Risk', color='#e74c3c', edgecolor='black')
+        if user_chest_pain_type in counts.index:
+            idx = counts.index.get_loc(user_chest_pain_type)
+            risk_bars[idx].set_edgecolor('blue'); risk_bars[idx].set_linewidth(2.5)
+            safe_bars[idx].set_edgecolor('blue'); safe_bars[idx].set_linewidth(2.5)
+            ax.text(safe_bars[idx].get_x() + safe_bars[idx].get_width() / 2, counts.loc[user_chest_pain_type].sum(), 'Your Type', ha='center', va='bottom', fontweight='bold')
+    else: ax.text(0.5, 0.5, 'Chest Pain data not found', ha='center')
+    ax.set_title('Heart Risk by Chest Pain Type', fontweight='bold'); ax.set_xlabel('Type of Chest Pain (0=None)'); ax.set_ylabel('Case Count'); ax.legend()
+    plt.tight_layout(); buf = BytesIO(); plt.savefig(buf, format='png'); plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+# Chart 3: Personalized Cholesterol Chart
+def create_cholesterol_chart(dataset, user_cholesterol_status):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if not dataset.empty and 'high_cholesterol' in dataset.columns:
+        sns.countplot(data=dataset, x='high_cholesterol', hue='Risk', ax=ax, palette=['#2ecc71', '#e74c3c'], edgecolor='black')
+        if user_cholesterol_status in [0, 1]:
+            for patch in ax.patches:
+                patch_center = patch.get_x() + patch.get_width() / 2
+                if np.isclose(patch_center, user_cholesterol_status - 0.2) or np.isclose(patch_center, user_cholesterol_status + 0.2):
+                    patch.set_edgecolor('blue'); patch.set_linewidth(2.5)
+    else: ax.text(0.5, 0.5, 'Cholesterol data not found', ha='center')
+    ax.set_title('Heart Risk by Cholesterol Status', fontweight='bold'); ax.set_xlabel('Cholesterol Status'); ax.set_ylabel('Case Count'); ax.set_xticklabels(['Normal', 'High']); ax.legend(title='Risk', labels=['Safe', 'At Risk'])
+    plt.tight_layout(); buf = BytesIO(); plt.savefig(buf, format='png'); plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+# Chart 4: Personalized Age vs. Body Fat Chart
+def create_age_bodyfat_scatter(dataset, user_age, user_bodyfat):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if not dataset.empty and 'Age' in dataset.columns and 'BodyFat' in dataset.columns:
+        sns.scatterplot(data=dataset, x='Age', y='BodyFat', ax=ax, color='purple', alpha=0.5, label='Population Data')
+        if user_age and user_bodyfat:
+            ax.plot(user_age, user_bodyfat, 'X', color='red', markersize=15, label='You Are Here', markeredgecolor='black')
+    else: ax.text(0.5, 0.5, 'Age or BodyFat data not found', ha='center')
+    ax.set_title('Age vs. Body Fat Percentage', fontweight='bold'); ax.set_xlabel('Age'); ax.set_ylabel('Body Fat %'); ax.legend()
+    plt.tight_layout(); buf = BytesIO(); plt.savefig(buf, format='png'); plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+# Chart 5: Personalized Diabetes by Age Group Chart
+def create_age_group_risk_chart(dataset, user_age, title):
+    fig, ax = plt.subplots(figsize=(8, 5));
+    if not dataset.empty and 'Age' in dataset.columns:
+        bins = list(range(20, 81, 10)); labels = [f'{i}-{i+9}' for i in bins[:-1]]
+        dataset['Age Group'] = pd.cut(dataset['Age'], bins=bins, labels=labels, right=False)
+        risk_counts = dataset[dataset['Risk'] == 1].groupby('Age Group', observed=False).size().reindex(labels).fillna(0)
+        bars = ax.bar(risk_counts.index, risk_counts.values, color='skyblue', edgecolor='black')
+        user_age_group = pd.cut([user_age], bins=bins, labels=labels, right=False)[0]
+        if user_age_group in risk_counts.index:
+            user_index = risk_counts.index.get_loc(user_age_group); bars[user_index].set_color('salmon'); bars[user_index].set_edgecolor('red')
+            ax.text(bars[user_index].get_x() + bars[user_index].get_width()/2.0, bars[user_index].get_height(), 'Your Group', ha='center', va='bottom', fontweight='bold')
+    else: ax.text(0.5, 0.5, 'Data not available', ha='center')
+    ax.set_title(title, fontsize=14, fontweight='bold'); ax.set_xlabel('Age Group'); ax.set_ylabel('Number of At-Risk Cases'); ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+    plt.tight_layout(); buf = BytesIO(); plt.savefig(buf, format='png', dpi=100); plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+# Chart 6: Personalized Body Fat Gauge
+def create_bodyfat_gauge_chart(user_bodyfat):
+    fig, ax = plt.subplots(figsize=(8, 3)); ranges = {'Healthy': (0, 25, '#2ecc71'), 'Overweight': (25, 30, '#f39c12'), 'Obese': (30, 50, '#e74c3c')}
+    for label, (start, end, color) in ranges.items():
+        ax.axvspan(start, end, alpha=0.6, color=color); ax.text((start + end) / 2, 0.5, label, ha='center', va='center', color='white', fontsize=12, fontweight='bold')
+    if user_bodyfat is not None:
+        ax.axvline(user_bodyfat, color='black', ymin=0.2, ymax=0.8, linewidth=3)
+        ax.text(user_bodyfat, 0.85, f'You: {user_bodyfat:.1f}%', ha='center', va='bottom', fontweight='bold', bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', boxstyle='round,pad=0.3'))
+    ax.set_title('Body Fat Percentage Guide', fontsize=14, fontweight='bold'); ax.set_xlabel('Body Fat (%)'); ax.set_yticks([]); ax.set_xlim(0, 50); ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False); ax.spines['left'].set_visible(False)
+    plt.tight_layout(); buf = BytesIO(); plt.savefig(buf, format='png', dpi=100); plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+# -------- /tips Route (UPDATED TO CALL ALL SIX CHARTS) --------
 @app.route("/tips", methods=["GET", "POST"])
 def tips():
     data = None
     if request.method == "POST":
-        pdf = request.files.get("pdf")
-        if not pdf or not pdf.filename.endswith(".pdf"):
-            flash("Please upload a valid PDF report", "danger")
-            return redirect("/tips")
-
-        # Save temp file
-        pdf_path = "temp_uploads/report.pdf"
-        os.makedirs("temp_uploads", exist_ok=True)
-        pdf.save(pdf_path)
-
-        # ---- Extract text from PDF ----
-        text = ""
+        pdf = request.files.get("pdf");
+        if not pdf or not pdf.filename.endswith(".pdf"): flash("Please upload a valid PDF report", "danger"); return redirect("/tips")
+        pdf_path = os.path.join("temp_uploads", "report.pdf"); os.makedirs("temp_uploads", exist_ok=True); pdf.save(pdf_path)
         try:
-            doc = fitz.open(pdf_path)
-            for page in doc:
-                text += page.get_text()
-            doc.close()
-        except Exception as e:
-            flash(f"PDF read error: {e}", "danger")
-            return redirect("/tips")
-
-        # ---- Extract Age (optional) ----
-        age_match = re.search(r"Age\s*:\s*(\d+)", text)
-        age = int(age_match.group(1)) if age_match else 30  # default
-
-        # ---- Heart prediction ----
-        heart_match = re.search(r"Heart Prediction.*?prediction\s+(\d)", text, re.DOTALL)
-        heart_risk = int(heart_match.group(1)) if heart_match else 0
-
-        # ---- Diabetes prediction ----
-        diab_match = re.search(r"Diabetes Prediction.*?prediction\s+(\d)", text, re.DOTALL)
-        diabetes_risk = int(diab_match.group(1)) if diab_match else 0
-
-        # ---- Body fat prediction ----
-        fat_match = re.search(r"Body Fat Prediction.*?prediction\s+([\d.]+)", text, re.DOTALL)
-        bodyfat_percent = float(fat_match.group(1)) if fat_match else None
+            with fitz.open(pdf_path) as doc: text = "".join(page.get_text() for page in doc)
+        except Exception as e: flash(f"PDF read error: {e}", "danger"); return redirect("/tips")
+        
+        # --- General Data Extraction ---
+        age = int(re.search(r"Age\s*:\s*(\d+)", text).group(1) if re.search(r"Age\s*:\s*(\d+)", text) else 30)
+        gender_label = 'Male' if (re.search(r"Gender\s*:\s*(\w+)", text).group(1).lower() if re.search(r"Gender\s*:\s*(\w+)", text) else "").startswith('m') else 'Female'
+        heart_risk = int(re.search(r"Heart.*?prediction\s+(\d)", text, re.DOTALL).group(1) if re.search(r"Heart.*?prediction\s+(\d)", text, re.DOTALL) else 0)
+        diabetes_risk = int(re.search(r"Diabetes.*?prediction\s+(\d)", text, re.DOTALL).group(1) if re.search(r"Diabetes.*?prediction\s+(\d)", text, re.DOTALL) else 0)
+        fat_match = re.search(r"Body Fat.*?prediction\s+([\d.]+)", text, re.DOTALL); bodyfat_percent = float(fat_match.group(1)) if fat_match else None
         bodyfat_risk = 1 if bodyfat_percent and bodyfat_percent > 25 else 0
 
-        # ---- Age group + types ----
+        # --- User-Specific Data for Chart Personalization ---
+        # NOTE: You may need to adjust these text patterns to match your PDF report exactly.
+        user_chest_pain_type = int(re.search(r"Chest Pain.*?(\d)", text, re.DOTALL).group(1)) if re.search(r"Chest Pain.*?(\d)", text, re.DOTALL) else 0
+        user_cholesterol_status = int(re.search(r"High Cholesterol.*?(\d)", text, re.DOTALL).group(1)) if re.search(r"High Cholesterol.*?(\d)", text, re.DOTALL) else 0
+
         age_group = get_age_group(age)
-        heart_type = "Risky" if heart_risk else "Safe"
-        diabetes_type = "Risky" if diabetes_risk else "Safe"
-        bodyfat_type = get_bodyfat_category(bodyfat_percent, bodyfat_risk)
-
-        # ---- Prepare data for HTML ----
+        total_risks = sum([heart_risk, diabetes_risk, bodyfat_risk]); health_status = "Excellent" if total_risks == 0 else "Good" if total_risks == 1 else "Fair" if total_risks == 2 else "Needs Attention"
+        
         data = {
-            "age": age,
-            "heart": {
-                "risk": heart_risk,
-                "tips": get_tips("heart", age_group, heart_type, n=2 if heart_risk else 1)
-            },
-            "diabetes": {
-                "risk": diabetes_risk,
-                "tips": get_tips("diabetes", age_group, diabetes_type, n=2 if diabetes_risk else 1)
-            },
-            "bodyfat": {
-                "risk": bodyfat_risk,
-                "percent": bodyfat_percent,
-                "tips": get_tips("bodyfat", age_group, bodyfat_type, n=2 if bodyfat_risk else 1),
-                "chart": create_chart(bodyfat_percent) if bodyfat_percent else None
-            }
+            "age": age, "gender": gender_label, "health_status": health_status,
+            "heart": {"risk": heart_risk, "tips": get_tips("heart", age_group, "Risky" if heart_risk else "Safe")},
+            "diabetes": {"risk": diabetes_risk, "tips": get_tips("diabetes", age_group, "Risky" if diabetes_risk else "Safe")},
+            "bodyfat": {"risk": bodyfat_risk, "percent": bodyfat_percent, "tips": get_tips("bodyfat", age_group, "Risky" if bodyfat_risk else "Safe")},
+            
+            # --- Call all six charting functions ---
+            "heart_age_chart": create_heart_age_distribution_chart(heart_data, age),
+            "chest_pain_chart": create_chest_pain_chart(heart_data, user_chest_pain_type),
+            "cholesterol_chart": create_cholesterol_chart(heart_data, user_cholesterol_status),
+            "age_bodyfat_chart": create_age_bodyfat_scatter(bodyfat_data, age, bodyfat_percent),
+            "diabetes_age_chart": create_age_group_risk_chart(diabetes_data, age, 'Diabetes Cases by Age Group'),
+            "bodyfat_gauge_chart": create_bodyfat_gauge_chart(bodyfat_percent)
         }
-
+        try: os.remove(pdf_path)
+        except OSError: pass
     return render_template("tips.html", data=data)
+
+
 
 #-----------------------------Chatbot Section -----------------------------------
 # from flask import Flask, render_template, request, jsonify

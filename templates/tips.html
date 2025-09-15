@@ -1,95 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Personalized Health Tips</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='tips.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Health Tips</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tips.css') }}">
+    <style>
+        .charts-dashboard .dashboard-subtitle { text-align: center; margin-bottom: 20px; color: #666; }
+        .charts-grid-multi-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; width: 100%; }
+        .chart-wrapper { background-color: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
+        .chart-wrapper img { width: 100%; height: auto; border-radius: 8px; }
+        .flash-messages { max-width: 900px; margin: 1rem auto; padding: 0; list-style: none; }
+        .flash { padding: 1rem; margin-bottom: 1rem; border-radius: 8px; font-weight: 500; text-align: center; }
+        .flash.danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
 </head>
 <body>
+    <div class="tips-container">
+        <div class="header">
+            <h1>Personalized Health Tips</h1>
+            <p>Upload your health report PDF to get instant insights and recommendations.</p>
+        </div>
 
-  <div class="form-box">
-    <form method="post" enctype="multipart/form-data">
-      <label class="form-label"><b>Upload Your Health Report (PDF):</b></label><br>
-      <input type="file" name="pdf" accept=".pdf" required class="file-input"><br><br>
-      <button type="submit" class="btn-submit">Analyze Report</button>
-    </form>
-  </div>
+        <div class="upload-form-wrapper">
+            <form action="/tips" method="POST" enctype="multipart/form-data" class="upload-form">
+                <div class="form-group"><label for="pdf">Upload Health Report (PDF only)</label><input type="file" name="pdf" id="pdf" accept=".pdf" required></div>
+                <button type="submit" class="submit-btn">Get My Tips</button>
+            </form>
+        </div>
 
-  {% if data %}
-    <h1 class="title">Your Health Analysis</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<ul class="flash-messages">{% for category, message in messages %}<li class="flash {{ category }}">{{ message }}</li>{% endfor %}</ul>{% endif %}{% endwith %}
 
-    <!-- Heart -->
-    <div class="risk-card {% if data.heart.risk %}risk-red{% else %}risk-green{% endif %}">
-      <h2>Heart Health: {% if data.heart.risk %}High Risk{% else %}Safe{% endif %}</h2>
-    </div>
-    {% if data.heart.risk %}
-    <div class="tips-section fade-in">
-      <h3>Diet Tips</h3>
-      <ul>
-        {% for tip in data.heart.tips.diet %}
-          <li>{{ tip }}</li>
-        {% endfor %}
-      </ul>
-      <h3>Exercise Tips</h3>
-      <ul>
-        {% for tip in data.heart.tips.exercise %}
-          <li>{{ tip }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
+        {% if data %}
+        <div id="results-container" class="results-container">
+            
+            <div class="summary-card">
+                <h2 class="card-title">Your Health Snapshot</h2>
+                <div class="summary-details">
+                    <div class="summary-item"><strong>Age:</strong> <span>{{ data.age }}</span></div>
+                    <div class="summary-item"><strong>Gender:</strong> <span>{{ data.gender }}</span></div>
+                    <div class="summary-item"><strong>Overall Status:</strong> <span class="status-{{ data.health_status.lower().replace(' ', '-') }}">{{ data.health_status }}</span></div>
+                </div>
+            </div>
+            
+            <div class="charts-dashboard">
+                <h2 class="card-title">Your Personalized Health Dashboard</h2>
+                <p class="dashboard-subtitle">See how your health metrics compare to population data.</p>
+                <div class="charts-grid-multi-col">
+                    
+                    <div class="chart-wrapper">
+                        <img src="data:image/png;base64,{{ data.heart_age_chart }}" alt="Your Age in Heart Risk Distribution">
+                    </div>
 
-    <!-- Diabetes -->
-    <div class="risk-card {% if data.diabetes.risk %}risk-red{% else %}risk-green{% endif %}">
-      <h2>Diabetes: {% if data.diabetes.risk %}High Risk{% else %}Safe{% endif %}</h2>
-    </div>
-    {% if data.diabetes.risk %}
-    <div class="tips-section fade-in">
-      <h3>Diet Tips</h3>
-      <ul>
-        {% for tip in data.diabetes.tips.diet %}
-          <li>{{ tip }}</li>
-        {% endfor %}
-      </ul>
-      <h3>Exercise Tips</h3>
-      <ul>
-        {% for tip in data.diabetes.tips.exercise %}
-          <li>{{ tip }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
+                    <div class="chart-wrapper">
+                        <img src="data:image/png;base64,{{ data.chest_pain_chart }}" alt="Personalized Chest Pain Analysis">
+                    </div>
 
-    <!-- Body Fat -->
-    <div class="risk-card {% if data.bodyfat.risk %}risk-red{% else %}risk-green{% endif %}">
-      <h2>Body Fat: 
-        {% if data.bodyfat.risk %}High ({{ data.bodyfat.percent }}%) 
-        {% else %}Normal ({{ data.bodyfat.percent }}%) {% endif %}
-      </h2>
-    </div>
-    {% if data.bodyfat.risk %}
-    <div class="tips-section fade-in">
-      <h3>Diet Tips</h3>
-      <ul>
-        {% for tip in data.bodyfat.tips.diet %}
-          <li>{{ tip }}</li>
-        {% endfor %}
-      </ul>
-      <h3>Exercise Tips</h3>
-      <ul>
-        {% for tip in data.bodyfat.tips.exercise %}
-          <li>{{ tip }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
+                    <div class="chart-wrapper">
+                        <img src="data:image/png;base64,{{ data.cholesterol_chart }}" alt="Personalized Cholesterol Analysis">
+                    </div>
+                    
+                    <div class="chart-wrapper">
+                        <img src="data:image/png;base64,{{ data.age_bodyfat_chart }}" alt="Your Age vs. Body Fat">
+                    </div>
+                    
+                    <div class="chart-wrapper">
+                        <img src="data:image/png;base64,{{ data.diabetes_age_chart }}" alt="Personalized Diabetes Risk by Age">
+                    </div>
+                    
+                    <div class="chart-wrapper">
+                        <img src="data:image/png;base64,{{ data.bodyfat_gauge_chart }}" alt="Your Body Fat Guide">
+                    </div>
 
-    {% if data.bodyfat.chart %}
-    <div class="chart-container fade-in">
-      <img src="data:image/png;base64,{{ data.bodyfat.chart }}" alt="Body Fat Chart">
-    </div>
-    {% endif %}
-  {% endif %}
+                </div>
+            </div>
 
+            <div class="recommendations">
+                <h2 class="card-title">Personalized Recommendations</h2>
+                <div class="tip-cards-container">
+                    <div class="tip-card {{ 'risky' if data.heart.risk else 'safe' }}"><div class="card-body"><h3 class="card-icon">🫀 Heart Health</h3><p class="risk-status">Status: {{ 'At Risk' if data.heart.risk else 'Safe' }}</p><hr><div class="tips-section"><h4>Diet Tips:</h4><ul>{% for tip in data.heart.tips.diet %}<li>{{ tip }}</li>{% else %}<li>Maintain a heart-healthy diet.</li>{% endfor %}</ul><h4>Exercise Tips:</h4><ul>{% for tip in data.heart.tips.exercise %}<li>{{ tip }}</li>{% else %}<li>Engage in regular cardio exercise.</li>{% endfor %}</ul></div></div></div>
+                    <div class="tip-card {{ 'risky' if data.diabetes.risk else 'safe' }}"><div class="card-body"><h3 class="card-icon">🩸 Diabetes Management</h3><p class="risk-status">Status: {{ 'At Risk' if data.diabetes.risk else 'Safe' }}</p><hr><div class="tips-section"><h4>Diet Tips:</h4><ul>{% for tip in data.diabetes.tips.diet %}<li>{{ tip }}</li>{% else %}<li>Monitor your sugar intake.</li>{% endfor %}</ul><h4>Exercise Tips:</h4><ul>{% for tip in data.diabetes.tips.exercise %}<li>{{ tip }}</li>{% else %}<li>Stay active to manage blood sugar.</li>{% endfor %}</ul></div></div></div>
+                    <div class="tip-card {{ 'risky' if data.bodyfat.risk else 'safe' }}"><div class="card-body"><h3 class="card-icon">⚖️ Body Fat Control</h3><p class="risk-status">Status: {{ 'Needs Attention' if data.bodyfat.risk else 'Healthy Range' }}{% if data.bodyfat.percent is not none %} ({{ '%.1f'|format(data.bodyfat.percent) }}%){% endif %}</p><hr><div class="tips-section"><h4>Diet Tips:</h4><ul>{% for tip in data.bodyfat.tips.diet %}<li>{{ tip }}</li>{% else %}<li>Focus on a balanced, whole-foods diet.</li>{% endfor %}</ul><h4>Exercise Tips:</h4><ul>{% for tip in data.bodyfat.tips.exercise %}<li>{{ tip }}</li>{% else %}<li>Combine cardio with strength training.</li>{% endfor %}</ul></div></div></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
 </body>
 </html>

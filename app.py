@@ -5,16 +5,24 @@ import joblib
 import pandas as pd
 from dotenv import load_dotenv
 import openai
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from io import BytesIO
+import base64
+import fitz  # PyMuPDF
+import re
+from docx import Document
+import random
 
 # ------------------ Load environment variables ------------------
-load_dotenv()  # must come before accessing os.getenv
-
+load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY")
-
 if not OPENAI_API_KEY or not SECRET_KEY:
     raise ValueError("Missing OPENAI_API_KEY or SECRET_KEY in .env")
-
 openai.api_key = OPENAI_API_KEY
 
 # ------------------ Flask app ------------------
@@ -29,22 +37,18 @@ db = pymysql.connect(
     database=os.getenv("MYSQLDATABASE"),
     port=int(os.getenv("MYSQLPORT"))
 )
-
 cursor = db.cursor()
 
 # ------------------ Load ML models ------------------
 diabetes_model = joblib.load("models/rf_Diabetes.joblib")
 diabetes_scaler = joblib.load("models/scaler_Diabetes.joblib")
-
 heart_model = joblib.load("models/lr_heart.joblib")
 heart_scaler = joblib.load("models/scaler_heart.joblib")
-
 bodyfat_model = joblib.load("models/Body_fat.joblib")
 bodyfat_scaler = joblib.load("models/scaler_bodyfat.joblib")
 
-
-# ----------------------------Signup Route-------------------------------------------
-@app.route("/signup", methods=["GET", "POST"])
+# ------------------ User Authentication ------------------
+@app.route("/signup", methods=["GET","POST"])
 def signup():
     if request.method == "POST":
         first_name = request.form["first_name"]
@@ -55,82 +59,63 @@ def signup():
         phone = request.form["phone"]
         recovery_password = request.form["recovery_password"]
 
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         if cursor.fetchone():
             flash("User already exists. Please login.", "warning")
             return redirect("/")
-
-        cursor.execute("INSERT INTO users (first_name, last_name, email, phone, dob, password, recovery_password) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                       (first_name, last_name, email, phone, dob, password, recovery_password))
+        cursor.execute("""
+            INSERT INTO users (first_name, last_name, email, phone, dob, password, recovery_password)
+            VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """, (first_name,last_name,email,phone,dob,password,recovery_password))
         db.commit()
         flash("Registration successful. Please login.", "success")
         return redirect("/")
     return render_template("signup.html")
 
-# -----------------------------------Signin Route----------------------------------------------
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET","POST"])
 def signin():
-    if request.method == "POST":
+    if request.method=="POST":
         email = request.form["email"]
         password = request.form["password"]
-
-        cursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
+        cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s",(email,password))
         user = cursor.fetchone()
-
         if user:
             session["user"] = email
+            session["user_id"] = user[0]  # store id for FK relations
             return redirect("/main")
         else:
-            flash("User not found. Please register first.", "danger")
+            flash("User not found. Please register first.","danger")
             return redirect("/")
     return render_template("signin.html")
 
-
-
-@app.route("/forgot", methods=["GET", "POST"])
+@app.route("/forgot", methods=["GET","POST"])
 def forgot_password():
-    if request.method == "POST":
+    if request.method=="POST":
         email = request.form["email"]
         dob = request.form["dob"]
         recovery_password = request.form["recovery_password"]
         new_password = request.form["new_password"]
-
-        cursor.execute(
-            "SELECT * FROM users WHERE email = %s AND dob = %s AND recovery_password = %s",
-            (email, dob, recovery_password)
-        )
-        user = cursor.fetchone()
-
-        if user:
-            cursor.execute("UPDATE users SET password = %s WHERE email = %s", (new_password, email))
+        cursor.execute("SELECT * FROM users WHERE email=%s AND dob=%s AND recovery_password=%s",
+                       (email,dob,recovery_password))
+        if cursor.fetchone():
+            cursor.execute("UPDATE users SET password=%s WHERE email=%s",(new_password,email))
             db.commit()
-            flash("Password updated successfully! You can now login.", "success")
+            flash("Password updated successfully. Please login.","success")
             return redirect("/")
         else:
-            flash("Invalid credentials. Please try again.", "danger")
+            flash("Invalid credentials. Try again.","danger")
             return redirect("/forgot")
-
     return render_template("forgot.html")
 
-
-
-
-
-
-
-
-
-
-# --------------------------------Main Dashboard Route------------------------------------
+# ------------------ Main Dashboard ------------------
 @app.route("/main")
 def main_page():
     if "user" in session:
         return render_template("main.html", user=session["user"])
-    else:
-        flash("Please login first.", "warning")
-        return redirect("/")
+    flash("Please login first.","warning")
+    return redirect("/")
 
-# Contact form
+# ------------------ Contact Form ------------------
 @app.route("/contact", methods=["POST"])
 def contact():
     name = request.form.get("name")
@@ -139,264 +124,167 @@ def contact():
     latitude = request.form.get("latitude")
     longitude = request.form.get("longitude")
     address = request.form.get("address")
+    user_id = session.get("user_id")  # use FK if logged in
 
-    cursor.execute(
-        "INSERT INTO contact_messages (name, email, message, latitude, longitude, address) VALUES (%s, %s, %s, %s, %s, %s)",
-        (name, email, message, latitude, longitude, address)
-    )
+    cursor.execute("""
+        INSERT INTO contact_messages (user_id, name, email, message, latitude, longitude, address)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)
+    """,(user_id,name,email,message,latitude,longitude,address))
     db.commit()
-    flash("Your message and full address were received. Thank you!", "success")
+    flash("Message received. Thank you!","success")
     return redirect("/main")
 
-# ------------------------------Heart Prediction Route---------------------------------
-@app.route("/heart", methods=["GET", "POST"])
+# ------------------ Heart Prediction ------------------
+@app.route("/heart", methods=["GET","POST"])
 def heart_prediction():
-    if "user" not in session:
-        flash("Please login first.", "warning")
+    if "user_id" not in session:
+        flash("Please login first.","warning")
         return redirect("/")
-
-    prediction = None
-    probability = None
-
-    if request.method == "POST":
+    prediction = probability = None
+    if request.method=="POST":
         try:
-            # Step 1: Extract form inputs
-            input_fields = [
-                "Chest_Pain", "Shortness_of_Breath", "Fatigue", "Palpitations",
-                "Dizziness", "Swelling", "Pain_Arms_Jaw_Back", "Cold_Sweats_Nausea",
-                "High_BP", "High_Cholesterol", "Diabetes", "Smoking", "Obesity",
-                "Sedentary_Lifestyle", "Family_History", "Chronic_Stress", "Gender", "Age"
-            ]
-            inputs = {field: int(request.form[field]) for field in input_fields}
-            print("Form Inputs:", inputs)
-
-            # Step 2: Prepare DataFrame
+            fields = ["Chest_Pain","Shortness_of_Breath","Fatigue","Palpitations","Dizziness","Swelling",
+                      "Pain_Arms_Jaw_Back","Cold_Sweats_Nausea","High_BP","High_Cholesterol","Diabetes",
+                      "Smoking","Obesity","Sedentary_Lifestyle","Family_History","Chronic_Stress","Gender","Age"]
+            inputs = {f:int(request.form[f]) for f in fields}
             df = pd.DataFrame([inputs])
-            print("DataFrame:\n", df)
-
-            # Step 3: Scale inputs
             scaled = heart_scaler.transform(df)
-            print("Scaled Input:", scaled)
-
-            # Step 4: Predict
             prediction = int(heart_model.predict(scaled)[0])
-            print("Prediction:", prediction)
-
-            # Step 5: Get probability
-            if hasattr(heart_model, "predict_proba"):
+            if hasattr(heart_model,"predict_proba"):
                 prob_values = heart_model.predict_proba(scaled)[0]
-                print("Probabilities:", prob_values)
-                probability = float(prob_values[prediction]) * 100
-            else:
-                flash("Model does not support predict_proba", "danger")
-                probability = None
-
-            # Step 6: Fetch user info
+                probability = float(prob_values[prediction])*100
             user_email = session["user"]
-            cursor.execute("SELECT first_name, last_name FROM users WHERE email = %s", (user_email,))
+            cursor.execute("SELECT first_name,last_name FROM users WHERE email=%s",(user_email,))
             user = cursor.fetchone()
             user_name = f"{user[0]} {user[1]}" if user else "Unknown"
-
-            # Step 7: Store prediction to DB
             cursor.execute("""
-                INSERT INTO heart_predictions (
-                    user_email, user_name, Chest_Pain, Shortness_of_Breath, Fatigue,
-                    Palpitations, Dizziness, Swelling, Pain_Arms_Jaw_Back, Cold_Sweats_Nausea,
-                    High_BP, High_Cholesterol, Diabetes, Smoking, Obesity,
-                    Sedentary_Lifestyle, Family_History, Chronic_Stress,
-                    Gender, Age, prediction, probability
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                user_email, user_name, *[inputs[field] for field in input_fields],
-                prediction, probability
-            ))
+                INSERT INTO heart_predictions (user_id,user_email,user_name,
+                    Chest_Pain,Shortness_of_Breath,Fatigue,Palpitations,Dizziness,Swelling,
+                    Pain_Arms_Jaw_Back,Cold_Sweats_Nausea,High_BP,High_Cholesterol,Diabetes,
+                    Smoking,Obesity,Sedentary_Lifestyle,Family_History,Chronic_Stress,Gender,Age,
+                    prediction,probability)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """,(session["user_id"],user_email,user_name,*[inputs[f] for f in fields],prediction,probability))
             db.commit()
-
         except Exception as e:
-            print("💥 Prediction Error:", e)
-            flash(f"Prediction Error: {str(e)}", "danger")
-            prediction = None
-            probability = None
-
+            flash(f"Prediction Error: {e}","danger")
     return render_template("heart.html", prediction=prediction, probability=probability)
 
-
-
-
-
-#-----------------------------Diabetes Prediction-----------------------------------
-@app.route("/diabetes", methods=["GET", "POST"])
+# ------------------ Diabetes Prediction ------------------
+@app.route("/diabetes", methods=["GET","POST"])
 def diabetes_prediction():
-    if "user" not in session:
-        flash("Please login first.", "warning")
+    if "user_id" not in session:
+        flash("Please login first.","warning")
         return redirect("/")
-
-    prediction = None
-    probability = None
-
-    if request.method == "POST":
+    prediction = probability = None
+    if request.method=="POST":
         try:
-            inputs = {
-                'age': int(request.form["age"]),
-                'gender': int(request.form["gender"]),
-                'polyuria': int(request.form["polyuria"]),
-                'polydipsia': int(request.form["polydipsia"]),
-                'sudden_weight_loss': int(request.form["sudden_weight_loss"]),
-                'weakness': int(request.form["weakness"]),
-                'polyphagia': int(request.form["polyphagia"]),
-                'genital_thrush': int(request.form["genital_thrush"]),
-                'visual_blurring': int(request.form["visual_blurring"]),
-                'itching': int(request.form["itching"]),
-                'irritability': int(request.form["irritability"]),
-                'delayed_healing': int(request.form["delayed_healing"]),
-                'partial_paresis': int(request.form["partial_paresis"]),
-                'muscle_stiffness': int(request.form["muscle_stiffness"]),
-                'alopecia': int(request.form["alopecia"]),
-                'obesity': int(request.form["obesity"])
-            }
-
+            fields = ['age','gender','polyuria','polydipsia','sudden_weight_loss','weakness','polyphagia',
+                      'genital_thrush','visual_blurring','itching','irritability','delayed_healing',
+                      'partial_paresis','muscle_stiffness','alopecia','obesity']
+            inputs = {f:int(request.form[f]) for f in fields}
             df = pd.DataFrame([inputs])
             scaled = diabetes_scaler.transform(df)
-            prediction = diabetes_model.predict(scaled)[0]
-            prob_values = diabetes_model.predict_proba(scaled)[0]
-            probability = float(prob_values[prediction]) * 100  # convert to percent
-
-            # Fetch user name
+            prediction = int(diabetes_model.predict(scaled)[0])
+            probability = float(diabetes_model.predict_proba(scaled)[0][prediction])*100
             user_email = session["user"]
-            cursor.execute("SELECT first_name, last_name FROM users WHERE email = %s", (user_email,))
+            cursor.execute("SELECT first_name,last_name FROM users WHERE email=%s",(user_email,))
             user = cursor.fetchone()
             user_name = f"{user[0]} {user[1]}" if user else "Unknown"
-
-            # Store into DB
             cursor.execute("""
-                INSERT INTO diabetes_predictions (
-                    user_email, user_name, age, gender, polyuria, polydipsia,
-                    sudden_weight_loss, weakness, polyphagia, genital_thrush,
-                    visual_blurring, itching, irritability, delayed_healing,
-                    partial_paresis, muscle_stiffness, alopecia, obesity,
-                    prediction, probability
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                user_email, user_name, *inputs.values(), int(prediction), probability
-            ))
+                INSERT INTO diabetes_predictions (user_id,user_email,user_name,
+                    age,gender,polyuria,polydipsia,sudden_weight_loss,weakness,polyphagia,
+                    genital_thrush,visual_blurring,itching,irritability,delayed_healing,
+                    partial_paresis,muscle_stiffness,alopecia,obesity,prediction,probability)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """,(session["user_id"],user_email,user_name,*[inputs[f] for f in fields],prediction,probability))
             db.commit()
-
         except Exception as e:
-            flash(f"Error: {str(e)}", "danger")
-
+            flash(f"Prediction Error: {e}","danger")
     return render_template("diabetes.html", prediction=prediction, probability=probability)
 
-
-#---------------------------Body_Fat Prediciton-----------------------------------
-@app.route("/bodyfat", methods=["GET", "POST"])
+# ------------------ BodyFat Prediction ------------------
+@app.route("/bodyfat", methods=["GET","POST"])
 def bodyfat_prediction():
-    if "user" not in session:
-        flash("Please login first.", "warning")
+    if "user_id" not in session:
+        flash("Please login first.","warning")
         return redirect("/")
-
-    prediction = None
-    lower = None
-    upper = None
-
-    if request.method == "POST":
+    prediction = lower = upper = None
+    if request.method=="POST":
         try:
-            fields = [
-                "Age", "Neck", "Chest", "Abdomen", "Hip", "Thigh", "Knee",
-                "Ankle", "Biceps", "Forearm", "Wrist", "Weight"
-            ]
-
-            # Extract and scale input
-            inputs = {field: float(request.form[field]) for field in fields}
+            fields = ["Age","Neck","Chest","Abdomen","Hip","Thigh","Knee","Ankle","Biceps","Forearm","Wrist","Weight"]
+            inputs = {f:float(request.form[f]) for f in fields}
             df = pd.DataFrame([inputs])
             scaled = bodyfat_scaler.transform(df)
-
-            # Predict body fat
             prediction = float(bodyfat_model.predict(scaled)[0])
-
-            # Manually set interval ±3.10
-            lower = round(prediction - 3.10, 2)
-            upper = round(prediction + 3.10, 2)
-
-            # Get user details
+            lower = round(prediction-3.10,2)
+            upper = round(prediction+3.10,2)
             user_email = session["user"]
-            cursor.execute("SELECT first_name, last_name FROM users WHERE email = %s", (user_email,))
+            cursor.execute("SELECT first_name,last_name FROM users WHERE email=%s",(user_email,))
             user = cursor.fetchone()
             user_name = f"{user[0]} {user[1]}" if user else "Unknown"
-
-            # Save to DB
             cursor.execute("""
-                INSERT INTO bodyfat_predictions (
-                    user_email, user_name, Age, Neck, Chest, Abdomen, Hip, Thigh,
-                    Knee, Ankle, Biceps, Forearm, Wrist, Weight,
-                    prediction, lower_bound, upper_bound
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                user_email, user_name, *[inputs[f] for f in fields],
-                prediction, lower, upper
-            ))
+                INSERT INTO bodyfat_predictions (user_id,user_email,user_name,
+                    Age,Neck,Chest,Abdomen,Hip,Thigh,Knee,Ankle,Biceps,Forearm,Wrist,Weight,
+                    prediction,lower_bound,upper_bound)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """,(session["user_id"],user_email,user_name,*[inputs[f] for f in fields],prediction,lower,upper))
             db.commit()
-
         except Exception as e:
-            print("💥 BodyFat Prediction Error:", e)
-            flash(f"Prediction Error: {str(e)}", "danger")
-
+            flash(f"Prediction Error: {e}","danger")
     return render_template("BodyFat.html", prediction=prediction, lower=lower, upper=upper)
 
-#-------------------------Report Generate --------------------------------------
-@app.route("/report", methods=["GET", "POST"])
+# ------------------ Report ------------------
+# ------------------ Report ------------------
+@app.route("/report", methods=["GET","POST"])
 def report():
     user_email = None
     heart = diabetes = bodyfat = None
-
     if request.method == "POST":
         user_email = request.form.get("email")
 
-        def fetch_latest(table, time_col):
-            cursor.execute(f"SELECT * FROM {table} WHERE user_email = %s ORDER BY {time_col} DESC LIMIT 1", (user_email,))
+        def fetch_latest(table):
+            cursor.execute(f"SELECT * FROM {table} WHERE user_email=%s ORDER BY created_at DESC LIMIT 1", (user_email,))
             row = cursor.fetchone()
             if row:
-                columns = [col[0] for col in cursor.description]
-                return dict(zip(columns, row))
+                cols = [c[0] for c in cursor.description]
+                return dict(zip(cols, row))
             return None
 
-        heart = fetch_latest("heart_predictions", "created_at")
-        diabetes = fetch_latest("diabetes_predictions", "created_at")
-        bodyfat = fetch_latest("bodyfat_predictions", "timestamp")
+        heart = fetch_latest("heart_predictions")
+        diabetes = fetch_latest("diabetes_predictions")
+        bodyfat = fetch_latest("bodyfat_predictions")
 
-    return render_template("report.html",
-                           user_email=user_email,
-                           heart=heart,
-                           diabetes=diabetes,
-                           bodyfat=bodyfat,
-                           pdf_export=False)
+    return render_template("report.html", user_email=user_email, heart=heart, diabetes=diabetes, bodyfat=bodyfat, pdf_export=False)
 
 
 @app.route("/download-report", methods=["POST"])
 def download_report():
     user_email = request.form.get("email")
 
-    def fetch_latest(table, time_col):
-        cursor.execute(f"SELECT * FROM {table} WHERE user_email = %s ORDER BY {time_col} DESC LIMIT 1", (user_email,))
+    def fetch_latest(table):
+        cursor.execute(f"SELECT * FROM {table} WHERE user_email=%s ORDER BY created_at DESC LIMIT 1", (user_email,))
         row = cursor.fetchone()
         if row:
-            columns = [col[0] for col in cursor.description]
-            return dict(zip(columns, row))
+            cols = [c[0] for c in cursor.description]
+            return dict(zip(cols, row))
         return None
 
-    heart = fetch_latest("heart_predictions", "created_at")
-    diabetes = fetch_latest("diabetes_predictions", "created_at")
-    bodyfat = fetch_latest("bodyfat_predictions", "timestamp")
+    heart = fetch_latest("heart_predictions")
+    diabetes = fetch_latest("diabetes_predictions")
+    bodyfat = fetch_latest("bodyfat_predictions")
 
-    rendered_html = render_template("report.html",
-                                    user_email=user_email,
-                                    heart=heart,
-                                    diabetes=diabetes,
-                                    bodyfat=bodyfat,
-                                    pdf_export=True)
+    rendered_html = render_template(
+        "report.html",
+        user_email=user_email,
+        heart=heart,
+        diabetes=diabetes,
+        bodyfat=bodyfat,
+        pdf_export=True
+    )
 
     from io import BytesIO
     from xhtml2pdf import pisa
-
     pdf = BytesIO()
     pisa_status = pisa.CreatePDF(rendered_html, dest=pdf)
     pdf.seek(0)
@@ -407,8 +295,6 @@ def download_report():
 
     return send_file(pdf, download_name="Health_Report.pdf", as_attachment=True)
 
-
-#--------------------Tips Section -----------------------------------
 # -------------------- Tips Section -----------------------------------
 import matplotlib
 matplotlib.use('Agg')
